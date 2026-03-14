@@ -4,12 +4,10 @@ from .console import Console
 
 class Accessory(ItemBase):
 
-    plataform = models.ForeignKey(
-        Console, 
-        on_delete=models.CASCADE, 
-        related_name="accesorios_list"
-    )
-
     def __str__(self):
-        return f"{self.fabricante} {self.nombre}"
+        return f"{self.plataform} {self.name}"
+    
+    class Meta:
+        verbose_name = 'Accesorio'
+        verbose_name_plural = 'Accesorios'
     

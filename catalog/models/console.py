@@ -3,12 +3,10 @@ from .base import ItemBase
 
 class Console(ItemBase):
 
-    plataform = models.CharField(
-        'fabricante',
-        max_length=50
-    )
-    
+    def __str__(self):
+            return f"{self.plataform}"
+        
 
-def __str__(self):
-        return f"{self.plataform} {self.nombre} [{self.region}]"
-    
+    class Meta:
+        verbose_name = 'Consola'
+        verbose_name_plural = 'Consolas'
