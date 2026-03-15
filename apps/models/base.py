@@ -1,4 +1,5 @@
 from django.db import models
+from .missingComponent import MissingComponent
 
 class ItemBase(models.Model):
     STATUS_CHOICES = [
@@ -101,10 +102,11 @@ class ItemBase(models.Model):
         null=True, 
         blank=True
     )
-
-    it_has_a_box = models.BooleanField(
-        '¿Tiene caja?',
-        default=False
+    
+    missing_components = models.ManyToManyField(
+        MissingComponent,
+        blank=True,
+        verbose_name='Falta específicamente:'
     )
     
     complete = models.BooleanField(
@@ -124,3 +126,6 @@ class ItemBase(models.Model):
     
     class Meta:
         abstract = True
+
+class Item(ItemBase):
+    pass

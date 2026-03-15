@@ -1,7 +1,7 @@
 from django.db import models
-from .base import ItemBase
+from .base import Item
 
-class Console(ItemBase):
+class Console(Item):
 
     def __str__(self):
             return f"{self.plataform}"

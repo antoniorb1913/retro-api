@@ -1,8 +1,7 @@
 from django.db import models
-from .console import ItemBase
-from .base import ItemBase
+from .base import Item
 
-class Game(ItemBase):
+class Game(Item):
 
     def __str__(self):
         return f"{self.name}"

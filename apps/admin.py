@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models.console import Console
 from .models.game import Game
 from .models.accessory import Accessory
+from .models.missingComponent import MissingComponent
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 
@@ -46,3 +47,16 @@ class AccessoryAdmin(ImportExportModelAdmin, admin.ModelAdmin):
     list_filter = ('plataform', 'status', 'complete')
     search_fields = ('name',)
     resource_class = AccessoryResource
+
+
+class MissingComponentResource(resources.ModelResource):
+    class Meta:
+        model = MissingComponent
+
+@admin.register(MissingComponent)
+
+class MissingComponentAdmin(ImportExportModelAdmin, admin.ModelAdmin):
+    list_display = ('name',)
+    list_filter = ('name',)
+    search_fields = ('name',)
+    resource_class = MissingComponentResource
