@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
                 ('complete', models.BooleanField(default=False, verbose_name='¿completo?')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Añadido el')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Última modificación')),
-                ('plataform', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='accesorios_list', to='catalog.console')),
+                ('plataform', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='accesorios_list', to='apps.console')),
             ],
             options={
                 'abstract': False,
@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Añadido el')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Última modificación')),
                 ('gender', models.CharField(blank=True, max_length=50, null=True)),
-                ('plataform', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='game_list', to='catalog.console')),
+                ('plataform', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='game_list', to='apps.console')),
             ],
             options={
                 'abstract': False,

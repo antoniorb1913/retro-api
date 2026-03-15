@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('catalog', '0005_remove_accessory_plataforma_and_more'),
+        ('apps', '0005_remove_accessory_plataforma_and_more'),
     ]
 
     operations = [

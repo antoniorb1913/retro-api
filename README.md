@@ -1,2 +1,3 @@
-# retro-api
-video game and retro console management project
+# Instalación del proyecto API.
+
+## Tener instalado Python, Django, Django REST, 

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('catalog', '0003_remove_accessory_stock_remove_console_stock_and_more'),
+        ('apps', '0003_remove_accessory_stock_remove_console_stock_and_more'),
     ]
 
     operations = [
