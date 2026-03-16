@@ -1,12 +1,11 @@
 FROM python:3.12-slim
 
-# Evita que Python genere archivos .pyc y permite ver logs en tiempo real
+# Evita archivos .pyc y asegura que los logs salgan directos a la consola
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV TZ=Europe/Madrid
 
-# Instalación de dependencias del sistema
-# Se añade python3-dev y dos2unix para evitar errores de compilación y de formato
+# 1. Dependencias del sistema
 RUN apt-get update && apt-get install -qq -y \
     libpq-dev \
     gcc \
@@ -16,23 +15,27 @@ RUN apt-get update && apt-get install -qq -y \
     dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
+    
 WORKDIR /app
 
-# Instalamos las dependencias de Python
-COPY requirements.txt /app/
+# 1. Copiamos AMBOS archivos de requisitos
+COPY requirements.txt requirements-dev.txt /app/
+
+# 2. Instalamos directamente el de desarrollo
+# Al tener el "-r requirements.txt" dentro, instalará TODO de un tirón
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-dev.txt
 
-# Configuración de Cron
-COPY docker/cron/retro_cron /etc/cron.d/retro_cron
-RUN chmod 0644 /etc/cron.d/retro_cron && crontab /etc/cron.d/retro_cron
+# 3. Resto de la configuración (Cron, opt, etc.)
+COPY docker/cron /etc/cron.d/retro_cron
+RUN echo "" >> /etc/cron.d/retro_cron && \
+    dos2unix /etc/cron.d/retro_cron && \
+    chmod 0644 /etc/cron.d/retro_cron && \
+    crontab /etc/cron.d/retro_cron
 
-# Copiamos scripts de utilidad y corregimos formato (por si vienen de Windows)
 COPY docker/opt/ /opt/
-RUN dos2unix /opt/*.sh && chmod +x /opt/*.sh
+RUN dos2unix /opt/*.sh && chmod +x /opt/*.sh && sed -i 's/\r$//' /opt/*.sh
 
-# Copiamos el resto del proyecto
 COPY . /app/
 
-# El entrypoint es el encargado de esperar a la DB y lanzar migraciones
-ENTRYPOINT ["/opt/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/opt/entrypoint.sh"]

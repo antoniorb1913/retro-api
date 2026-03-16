@@ -1,12 +1,22 @@
 #!/bin/bash
-set -e  # Esto detiene el script si algo falla
 
-echo "--- Iniciando el servicio de Cron ---"
+# 1. Captura variables para Cron
+export > /opt/.env.sh
+chmod 750 /opt/.env.sh
+
+# 2. Esperar a la base de datos
+echo "Esperando a la base de datos..."
+while ! nc -z retro_db 5432; do
+  sleep 0.5
+done
+
+# 3. Tareas de Django
+cd /app
+python manage.py migrate --noinput
+python manage.py collectstatic --noinput
+
+# 4. Iniciar Cron
 service cron start
 
-echo "--- Esperando a la base de datos y aplicando migraciones ---"
-# Opcional: añade un check de netcat aquí si falla la conexión inicial
-python manage.py migrate --noinput
-
-echo "--- Iniciando servidor de Django ---"
-exec python manage.py runserver 0.0.0.0:8000
+echo "Arrancando Gunicorn con mi nombre personalizado..."
+exec gunicorn -c servidor_config.py retro_inventary.wsgi

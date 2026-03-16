@@ -8,15 +8,16 @@ services:
       - "5432:5432"             # Mapea el puerto [PC]:[Contenedor]. Puedes conectar un gestor externo (como DBeaver)
     volumes:
       - retro_db_data:/var/lib/postgresql/data  # Persistencia: los datos no se borran al apagar el contenedor
-    environment:                # Configuración inicial de la DB
-      - POSTGRES_DB=retro_db    # Nombre de la base de datos
-      - POSTGRES_USER=admin     # Usuario maestro de la DB
-      - POSTGRES_PASSWORD=postgres # Contraseña (¡en producción cámbiala!)
+    
+    # --- CAMBIO IMPORTANTE AQUÍ: Se usa env_file para leer el archivo .env ---
+    env_file:
+      - .env                    # Aquí Docker lee POSTGRES_DB, POSTGRES_USER y POSTGRES_PASSWORD
+    
     healthcheck:                # El "médico": revisa si la DB está lista para recibir conexiones
-      test: ["CMD-SHELL", "pg_isready -U admin -d retro_db"] # Comando que verifica la salud
+      test: ["CMD-SHELL", "pg_isready -U admin -d retro_db"] # Comando que verifica la salud usando el usuario admin
       interval: 5s              # Lo intenta cada 5 segundos
       timeout: 5s               # Tiempo máximo de espera por intento
-      retries: 5                # Si falla 5 veces seguidas, marca el contenedor como "unhealthy"
+      retries: 10                # Si falla 5 veces seguidas, marca el contenedor como "unhealthy"
 
   # --- SERVICIO DE LA APP (DJANGO) ---
   app:
@@ -29,16 +30,12 @@ services:
     ports:
       - "8000:8000"             # Acceso desde tu navegador en http://localhost:8000
     volumes:
-      - .:/app                  # MODO DESARROLLO: sincroniza tus archivos locales con el contenedor.
+      - .:/app                  # MODO DESARROLLO: sincroniza tus archivos locales con el contenedor. 
                                 # Si cambias código en Windows, se aplica en el contenedor al instante.
-    environment:                # Variables de entorno para Django
-      - DEBUG=True
-      - SECRET_KEY=EtiinnN6jzLNnvllA8jKj5eOjOdsZTUj-jqnOAho6m_8nkal4jprqgTkY72knS5zOfY
-      - DB_NAME=retro_db
-      - DB_USER=admin
-      - DB_PASS=postgres
-      - DB_HOST=db              # Docker usa el nombre del servicio ('db') como dirección IP
-      - DB_PORT=5432
+    
+    # --- CAMBIO IMPORTANTE AQUÍ: Se usa env_file para leer el archivo .env ---
+    env_file:
+      - .env                    # Aquí Django lee DB_NAME, DB_USER, SECRET_KEY, etc.
 
 # --- DEFINICIÓN DE VOLÚMENES ---
 volumes:

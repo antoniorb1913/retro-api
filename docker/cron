@@ -1,0 +1,2 @@
+0 0 * * * root /opt/cron-daily.sh > /proc/1/fd/1 2> /proc/1/fd/2
+* * * * * root /opt/cron-minute.sh > /proc/1/fd/1 2> /proc/1/fd/2
