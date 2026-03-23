@@ -1,16 +1,39 @@
 from django.db import models
-from .base import Item
 
 class ItemImage(models.Model):
-    item = models.ForeignKey(
-        Item, 
+    # Relaciones opcionales a cada tipo de objeto
+    game = models.ForeignKey(
+        'apps.Game', 
         on_delete=models.CASCADE, 
-        related_name='images'
+        related_name='images', 
+        null=True, 
+        blank=True
     )
+    console = models.ForeignKey(
+        'apps.Console', 
+        on_delete=models.CASCADE, 
+        related_name='images', 
+        null=True, 
+        blank=True
+    )
+    accessory = models.ForeignKey(
+        'apps.Accessory', 
+        on_delete=models.CASCADE, 
+        related_name='images', 
+        null=True, 
+        blank=True
+    )
+
     image = models.ImageField(
         'Foto', 
         upload_to='items/%Y/%m/'
     )
 
     def __str__(self):
-        return f"Foto de {self.item.name}"
+        # Un pequeño truco para que el nombre en el admin sea útil
+        obj = self.game or self.console or self.accessory
+        return f"Foto de {obj.name if obj else 'desconocido'}"
+
+    class Meta:
+        verbose_name = "Imagen"
+        verbose_name_plural = "Imágenes"

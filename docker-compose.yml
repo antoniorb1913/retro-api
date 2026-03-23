@@ -1,42 +1,47 @@
 services:
-  # --- SERVICIO DE BASE DE DATOS ---
+  # --- SERVICIO DE BASE DE DATOS (PostgreSQL) ---
   db:
-    container_name: retro_db    # Nombre fijo para el contenedor (más fácil de identificar)
-    image: postgres:16          # Usa la imagen oficial de PostgreSQL versión 16
-    restart: unless-stopped     # Se reinicia solo si falla o si reinicias el PC (salvo que lo pares tú)
+    container_name: retro_db    # Nombre fijo para identificarlo fácilmente en Docker Desktop
+    image: postgres:16          # Usamos la versión 16 oficial (estable y moderna)
+    restart: unless-stopped     # Se reinicia solo si falla, pero respeta si tú lo apagas manualmente
     ports:
-      - "5432:5432"             # Mapea el puerto [PC]:[Contenedor]. Puedes conectar un gestor externo (como DBeaver)
+      - "5433:5432"             # Mapeo de puertos [Tu PC]:[Contenedor] para usar DBeaver o pgAdmin
     volumes:
-      - retro_db_data:/var/lib/postgresql/data  # Persistencia: los datos no se borran al apagar el contenedor
+      - retro_db_data:/var/lib/postgresql/data  # Persistencia: Tus juegos y datos no se borran al apagar
     
-    # --- CAMBIO IMPORTANTE AQUÍ: Se usa env_file para leer el archivo .env ---
+    # --- CONFIGURACIÓN POR ARCHIVO EXTERNO ---
     env_file:
-      - .env                    # Aquí Docker lee POSTGRES_DB, POSTGRES_USER y POSTGRES_PASSWORD
+      - .env                    # Lee POSTGRES_DB, POSTGRES_USER y POSTGRES_PASSWORD desde tu .env
     
-    healthcheck:                # El "médico": revisa si la DB está lista para recibir conexiones
-      test: ["CMD-SHELL", "pg_isready -U admin -d retro_db"] # Comando que verifica la salud usando el usuario admin
-      interval: 5s              # Lo intenta cada 5 segundos
-      timeout: 5s               # Tiempo máximo de espera por intento
-      retries: 10                # Si falla 5 veces seguidas, marca el contenedor como "unhealthy"
+    # --- EL "MÉDICO" DEL SISTEMA (Healthcheck) ---
+    healthcheck:
+      # Verifica que la DB esté lista. Usamos $$ para que Docker lea la variable del .env correctamente
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s              # Revisa el estado cada 5 segundos
+      timeout: 5s               # Si tarda más de 5s en responder, el intento falla
+      retries: 10               # Si falla 10 veces, marca el contenedor como "unhealthy" (enfermo)
 
   # --- SERVICIO DE LA APP (DJANGO) ---
   app:
     container_name: retro_app
-    build: .                    # Busca el "Dockerfile" en la carpeta actual para construir la imagen
-    depends_on:                 # ORDEN DE ARRANQUE
+    build: .                    # Construye la imagen usando tu Dockerfile optimizado
+    depends_on:
       db:
-        condition: service_healthy # NO arranca la app hasta que la DB pase el healthcheck (médico) de arriba
+        condition: service_healthy # LA CLAVE: No arranca Django hasta que la DB esté 100% lista
     restart: unless-stopped
     ports:
-      - "8000:8000"             # Acceso desde tu navegador en http://localhost:8000
-    volumes:
-      - .:/app                  # MODO DESARROLLO: sincroniza tus archivos locales con el contenedor. 
-                                # Si cambias código en Windows, se aplica en el contenedor al instante.
+      - "8000:8000"             # Tu puerta de acceso: http://localhost:8000
     
-    # --- CAMBIO IMPORTANTE AQUÍ: Se usa env_file para leer el archivo .env ---
+    # --- SINCRONIZACIÓN Y VELOCIDAD ---
+    volumes:
+      - .:/app                  # Mapeo en tiempo real: Si guardas un cambio en Windows, se aplica al instante
+      - static_volume:/app/staticfiles # TRUCO PRO: Volumen aislado para evitar errores de archivos 0 bytes
+    
+    # --- CARGA DE SECRETOS ---
     env_file:
-      - .env                    # Aquí Django lee DB_NAME, DB_USER, SECRET_KEY, etc.
+      - .env                    # Pasa todas tus llaves secretas y rutas a Django de forma segura
 
-# --- DEFINICIÓN DE VOLÚMENES ---
+# --- DEFINICIÓN DE DISCOS DUROS VIRTUALES (Volúmenes) ---
 volumes:
-  retro_db_data:                # Crea el "disco duro" virtual para la base de datos
+  retro_db_data:                # Almacena toda tu base de datos de forma segura
+  static_volume:                # Almacena los CSS y JS optimizados para que la web cargue rápido
