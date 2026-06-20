@@ -65,7 +65,7 @@ INSTALLED_APPS = [
     
     # Tus aplicaciones locales
     'user',
-    # 'inventory', (Cuando la crees)
+    'inventory',
     
 ]
 
