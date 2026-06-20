@@ -6,7 +6,7 @@ class ItemImageViewSet(viewsets.ModelViewSet):
     """
     Endpoint de imágenes — acepta multipart/form-data para subida.
     """
-    # ⚡ OPTIMIZADO: Evita el N+1 trayendo los tipos de contenido de golpe
+    # Evita el N+1 trayendo los tipos de contenido de golpe
     queryset = ItemImage.objects.select_related('content_type').all()
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
