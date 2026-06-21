@@ -21,6 +21,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('user.api.router')),
+    path('api/', include('invetory.api.router')),
     
     # 1. El endpoint que genera el esquema de tu API en JSON
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
