@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',  # <-- ¡Imprescindible para el JWT!
     'corsheaders',                # <-- ¡Imprescindible para conectar con Angular!
     'drf_spectacular',
+    'whitenoise',
     
     # Tus aplicaciones locales
     'user',
@@ -71,6 +72,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -104,21 +106,24 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Si 'DB_HOST' existe en el entorno (porque Docker lo inyectó), usa ese.
-# Si NO existe (porque estás en local sin Docker), por defecto usa 'localhost'.
-DB_HOST = env('DB_HOST', default='localhost')
-
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'PORT': env('DB_PORT'),
-        'HOST': DB_HOST,
+# Si existe DATABASE_URL (Render), úsala. Si no (local/Docker), usa los campos individuales.
+DATABASE_URL = env('DATABASE_URL', default=None)
+if DATABASE_URL:
+    DATABASES = {
+        'default': env.db('DATABASE_URL')
     }
-}
+else:
+    DB_HOST = env('DB_HOST', default='localhost')
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('DB_NAME'),
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'PORT': env('DB_PORT'),
+            'HOST': DB_HOST,
+        }
+    }
 
 
 # Password validation
@@ -176,7 +181,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = './static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -187,9 +201,13 @@ AUTH_USER_MODEL = 'user.User'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-CORS_ALLOWED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = env.list('DJANGO_CORS_ORIGINS', default=[
     'http://localhost:4200',
     'http://127.0.0.1:4200',
-]
+])
 
 CORS_ALLOW_CREDENTIALS = True
+
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS[:]
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
