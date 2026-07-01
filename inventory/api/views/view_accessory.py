@@ -4,7 +4,7 @@ from inventory.api.serializers.accessory import AccessorySerializer
 
 
 class AccessoryViewSet(viewsets.ModelViewSet):
-    queryset = Accessory.objects.prefetch_related('missing_components', 'image').all()
+    queryset = Accessory.objects.prefetch_related('missing_components', 'images').all()
     serializer_class = AccessorySerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'model', 'platform', 'region']

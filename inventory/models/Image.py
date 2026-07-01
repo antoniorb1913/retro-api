@@ -6,7 +6,27 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
+from django.utils.text import slugify
 from PIL import Image
+import pillow_heif
+
+pillow_heif.register_heif_opener()
+
+
+def item_image_upload_path(instance, filename):
+    model_name = instance.content_type.model if instance.content_type else 'unknown'
+    folder_plural = f'{model_name}s'  # console → consoles, game → games, accessory → accessories
+    try:
+        parent = instance.content_object
+        if parent and parent.name:
+            slug = slugify(parent.name)[:50]
+            folder = f'{slug}-{parent.id}'
+        else:
+            folder = f'unknown-{instance.object_id}'
+    except Exception:
+        folder = f'unknown-{instance.object_id}'
+    return f'{folder_plural}/{folder}/{filename}'
+
 
 class ItemImage(models.Model):
     """
@@ -19,8 +39,8 @@ class ItemImage(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    # Almacenamiento organizado dinámicamente por año y mes
-    image = models.ImageField('Foto', upload_to='items/%Y/%m/')
+    # Almacenamiento organizado por categoría y nombre del artículo
+    image = models.ImageField('Foto', upload_to=item_image_upload_path, max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

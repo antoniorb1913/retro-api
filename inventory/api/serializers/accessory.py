@@ -1,7 +1,22 @@
 from rest_framework import serializers
 from inventory.models.Accessory import Accessory
+from inventory.models.Missing_component import MissingComponent
+from inventory.api.serializers.missing_component import MissingComponentSerializer
+from inventory.api.serializers.image import ImageSerializer
 
 class AccessorySerializer(serializers.ModelSerializer):
+    missing_components = MissingComponentSerializer(many=True, read_only=True)
+    missing_component_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=MissingComponent.objects.all(),
+        write_only=True,
+        source='missing_components',
+        required=False,
+    )
+    images = ImageSerializer(many=True, read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    platform_display = serializers.CharField(source='get_platform_display', read_only=True)
+
     class Meta:
         model = Accessory
         fields = [

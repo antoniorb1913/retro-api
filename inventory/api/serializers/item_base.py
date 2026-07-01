@@ -4,7 +4,7 @@ from inventory.models.Image import ItemImage
 # Asegúrate de importar tus serializers correspondientes
 from .missing_component import MissingComponentSerializer
 from .image import ImageSerializer
-from .item_base import ItemBase
+from inventory.models.Base import ItemBase
 
 class ItemBaseSerializer(serializers.ModelSerializer):
     # Gestión de componentes (Lectura completa / Escritura por IDs)
