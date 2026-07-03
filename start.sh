@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-python manage.py migrate --noinput
+python manage.py migrate
 python manage.py collectstatic --noinput
 
 DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
