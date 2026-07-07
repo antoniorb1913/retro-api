@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'corsheaders',                # <-- ¡Imprescindible para conectar con Angular!
     'drf_spectacular',
     'whitenoise',
+    'storages',
     
     # Tus aplicaciones locales
     'user',
@@ -198,8 +199,22 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'user.User'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# Cloudflare R2 (almacenamiento de imágenes en producción)
+R2_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID', default=None)
+if R2_ACCESS_KEY_ID:
+    AWS_ACCESS_KEY_ID = R2_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY')
+    AWS_S3_ENDPOINT_URL = env('R2_ENDPOINT_URL')
+    AWS_STORAGE_BUCKET_NAME = env('R2_BUCKET_NAME')
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    AWS_DEFAULT_ACL = 'public-read'
+    AWS_LOCATION = 'media'
+    AWS_QUERYSTRING_AUTH = False
+    MEDIA_URL = env('R2_PUBLIC_URL') + '/media/'
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'}
+else:
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CORS_ALLOWED_ORIGINS = env.list('DJANGO_CORS_ORIGINS', default=[
     'http://localhost:4200',
