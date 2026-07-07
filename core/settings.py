@@ -210,7 +210,8 @@ if R2_ACCESS_KEY_ID:
     AWS_DEFAULT_ACL = 'public-read'
     AWS_LOCATION = 'media'
     AWS_QUERYSTRING_AUTH = False
-    MEDIA_URL = env('R2_PUBLIC_URL') + '/media/'
+    AWS_S3_CUSTOM_DOMAIN = env('R2_PUBLIC_URL').replace('https://', '')
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
     STORAGES['default'] = {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'}
 else:
     MEDIA_URL = '/media/'
