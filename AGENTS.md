@@ -293,6 +293,11 @@ Base: `http://localhost:8000/api/` (en el frontend sale de `environment.apiUrl` 
   El login se hace con **`email` + `password`** (`SIMPLE_JWT['USERNAME_FIELD'] = 'email'` en
   `core/settings.py`), **no** con `username`. Ojo: la ruta sigue siendo `/api/api/token/`
   (el `api` duplicado es intencionado y está pendiente de normalizar).
+- **Permisos**: **toda** la API exige token (`Authorization: Bearer <access>`) desde la tarea E4
+  (29/09/2026). Sin token, cualquier recurso responde **401**. Lo único público es
+  `/api/api/token/` y `/api/api/token/refresh/` (y `/api/docs/`, `/api/schema/`, que son
+  documentación). El defecto global está en `DEFAULT_PERMISSION_CLASSES` (`core/settings.py`):
+  **una vista nueva nace protegida**; abrirla exige `permission_classes = [AllowAny]` justificado.
 - **Paginación**: hoy **no hay** paginación de DRF configurada → los `GET` de lista devuelven
   un array completo (el frontend pagina en cliente). Ver §11.
 - **Errores**: DRF devuelve `{"campo": ["mensaje"]}` con el código HTTP correspondiente
@@ -746,10 +751,15 @@ no una lista de cambios a ejecutar:
    guardas): conviene envolverlos antes de reutilizarlos.
 
 **Seguridad**
-5. Los ViewSets del inventario no declaran `permission_classes` (hoy dependen del valor por
-   defecto de DRF). Fijarlos explícitamente es la mejora de seguridad más directa.
-6. `RegistroView` es público (`permission_classes = []`): decidir si el registro abierto es
-   intencionado.
+5. ✅ **RESUELTO (tarea E4, 29/09/2026)**: los ViewSets no declaraban `permission_classes` y DRF,
+   al no tener `DEFAULT_PERMISSION_CLASSES`, **permitía todo**: sin token se leía, se creaba, se
+   editaba y se **borraba** el inventario. Ahora `DEFAULT_PERMISSION_CLASSES` es
+   `IsAuthenticated` (`core/settings.py`) y cada ViewSet lo declara explícitamente. Cubierto por
+   `inventory/tests/test_e4_permisos.py` (10 tests).
+6. ✅ **RESUELTO en parte (tarea E4, 29/09/2026)**: `RegistroView` pasó de `permission_classes = []`
+   a `AllowAny` (explícito). **Pero además se descubrió que esa vista no tiene ruta**: `POST
+   /api/register/` devuelve 404, es **código muerto**. Decidir si se conecta o se elimina sigue
+   pendiente (ver §13.7).
 7. `.env` con `DJANGO_DEBUG=True`, `ALLOWED_HOSTS` local y una `SECRET_KEY` `django-insecure-*`:
    hay que rotarla y separar configuración de desarrollo/producción antes de desplegar.
    El `.env` está en `.gitignore` (bien) y no debe versionarse nunca.

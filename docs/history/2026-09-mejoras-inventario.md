@@ -219,3 +219,87 @@ Solo se anotan aquí las tareas **verificadas y confirmadas por el humano**.
   (ver el historial de `retro-app`).
 
 - **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
+
+---
+
+## E4. Permisos explícitos en los endpoints (la API estaba abierta)
+
+- **¿Qué realiza?:** cierra la API. Hasta esta tarea, **cualquier petición sin token se atendía**:
+  se podía leer, crear, editar y **borrar** el inventario sin estar autenticado. Ahora los cinco
+  recursos del inventario (consolas, juegos, accesorios, imágenes y componentes) exigen token y
+  responden **401** sin él. Lo único que sigue abierto es el login/refresh de token.
+
+- **¿Por qué?:** es el agujero de seguridad más grave que tenía el proyecto y estaba confirmado
+  desde la tarea A1 (`AGENTS.md` §11.5). No era una sospecha: se comprobó con `curl` que
+  `GET /api/consoles/` devolvía **200 sin autenticación**, y `DELETE` **borraba** registros.
+
+- **La causa raíz:** en `core/settings.py`, el bloque `REST_FRAMEWORK` declaraba
+  `DEFAULT_AUTHENTICATION_CLASSES` pero **no** `DEFAULT_PERMISSION_CLASSES`. Cuando DRF no
+  encuentra ese ajuste, **permite el paso a todo**. Por eso ninguna vista estaba protegida, aunque
+  el token existiera y funcionara.
+
+- **Dónde verlo:**
+  - `retro-api/core/settings.py` (líneas 150-152: `DEFAULT_PERMISSION_CLASSES` con
+    `IsAuthenticated`; 146-149: el comentario que explica el porqué)
+  - `retro-api/inventory/api/views/view_console.py` (línea 2: import; 9: `permission_classes`)
+  - `retro-api/inventory/api/views/view_game.py` (2 y 9), `view_accessory.py` (2 y 9),
+    `view_image.py` (2 y 11) y `view_mcomponent.py` (2 y 8)
+  - `retro-api/user/api/views.py` (línea 4: import de `AllowAny`; 11: la única vista abierta)
+  - `retro-api/inventory/tests/test_e4_permisos.py` (los 10 tests)
+
+- **Decisión de diseño (denegar por defecto, `AGENTS.md` §8.1):** el cierre se hace **en dos
+  niveles**:
+  1. **Global**, con `DEFAULT_PERMISSION_CLASSES`: cualquier vista **futura** nace protegida. Si
+     algún día se olvida declarar permisos en una vista nueva, el fallo será "no deja entrar" en
+     vez de "lo deja todo abierto".
+  2. **Por vista**, declarando `permission_classes = [IsAuthenticated]` en cada ViewSet: así el
+     archivo dice por sí solo qué permite, sin tener que ir a `settings.py` a averiguarlo.
+
+- **Cómo verificar:**
+  1. **Tests de la tarea:** `docker compose exec api python manage.py test inventory.tests.test_e4_permisos`
+     → `Ran 10 tests` / `OK`.
+  2. **Suite completa:** `docker compose exec api python manage.py test` → `Ran 31 tests` / `OK`.
+  3. **El agujero existía de verdad:** los mismos tests se ejecutaron **antes** de aplicar el
+     arreglo y **fallaron 9 de 10**. Resultados reales de esa ejecución:
+     - `/api/images/` y `/api/components/` devolvían **200** sin token.
+     - Subir una imagen sin token devolvía **400** (no 401): es decir, la petición **llegaba y se
+       validaba**. Cualquiera podía llenar el servidor de archivos sin tener cuenta.
+     - `test_sin_token_no_se_puede_borrar` fallaba: sin token se borraban registros.
+  4. **Contra la API en vivo** (comprobado el 29/09/2026 con `curl`):
+     los cinco `GET /api/<recurso>/` sin token → **401**; con token válido → **200**.
+  5. **El borrado, que es el caso grave:** `DELETE /api/consoles/<id>/` sin token → **401**, y el
+     registro **sigue existiendo** (comprobado leyéndolo después con token). Con token → **204**.
+  6. **Lo que debe seguir abierto:** `GET /api/docs/` → 200, `GET /api/schema/` → 200.
+  7. **En la aplicación** (comprobado por el humano el 29/09/2026): con la sesión iniciada todo
+     funciona igual (listas, detalles, fotos, crear, editar, subir imagen y borrar).
+
+- **Tests añadidos:** `retro-api/inventory/tests/test_e4_permisos.py` (10):
+  - `test_sin_token_no_se_puede_leer_ningun_recurso` (64): los 5 recursos → 401.
+  - `test_sin_token_no_se_puede_crear` (83): crear sin token → 401 y **nada se guarda**.
+  - `test_sin_token_no_se_puede_editar` (94): editar sin token → 401 y **el dato no cambia**.
+  - `test_sin_token_no_se_puede_borrar` (106): el caso más grave → 401 y **el registro sigue ahí**.
+  - `test_sin_token_no_se_puede_subir_una_imagen` (120): subida sin token → 401.
+  - `test_con_token_se_puede_leer_escribir_y_borrar` (136): ciclo completo con token (no se cerró
+    de más).
+  - `test_con_token_funcionan_los_cinco_recursos` (167).
+  - `test_un_token_invalido_tampoco_entra` (182): un token falso se rechaza igual que no llevarlo.
+  - `test_el_login_sigue_abierto` (193) y `test_el_refresh_sigue_abierto` (205).
+
+- **Hallazgo secundario (no corregido, es decisión aparte):** `RegistroView` **no está conectada a
+  ninguna ruta**. Se comprobó que `POST /api/register/` devuelve **404** y que la vista no aparece
+  en el listado de rutas de Django: es **código muerto**. No es que el registro esté abierto, es
+  que no existe. Se ha dejado tal cual (quitarla o conectarla es la decisión §13.7 del `AGENTS.md`)
+  y se añadió un comentario en `user/api/views.py` avisando de ello. Por este motivo el test del
+  registro que se había previsto **no se incluyó**: probar una ruta que no existe no aporta nada.
+
+- **Nota sobre las imágenes:** se comprobó que la aplicación pinta las fotos con
+  `<img src="/media/...">`, es decir, el navegador las pide a `/media/` y **no** a la API. Por eso
+  cerrar la API **no rompe las imágenes**. Si algún día se sirven por la API, habría que revisarlo.
+
+- **Rama de trabajo:** `seguridad-calidad` (`retro-api`). Esta tarea es solo de backend; en
+  `retro-app` no se tocó nada.
+
+- **Archivos tocados:** `core/settings.py`, los 5 `inventory/api/views/view_*.py`,
+  `user/api/views.py` y `inventory/tests/test_e4_permisos.py` (nuevo).
+
+- **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
