@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from rest_framework import serializers
 from inventory.models.Console import Console
 from inventory.models.Missing_component import MissingComponent
@@ -22,7 +24,7 @@ class ConsoleSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'model', 'platform', 'platform_display',
             'region', 'status', 'status_display', 'description',
-            'price', 'total_price', 'store', 'protective', 'acquisition_date', 'complete', 'edition',
+            'price', 'total_price', 'purchase_url', 'store', 'protective', 'acquisition_date', 'complete', 'edition',
             'missing_components', 'missing_component_ids',
             'images', 'created_at', 'updated_at',
         ]
@@ -46,3 +48,20 @@ class ConsoleSerializer(serializers.ModelSerializer):
             })
 
         return attrs
+
+    def validate_purchase_url(self, value):
+        """
+        Solo se aceptan enlaces web con http o https. Se rechaza cualquier otro esquema
+        (`javascript:`, `data:`, `file:`...): ese enlace se pinta en el frontend y un esquema
+        peligroso sería un vector de ataque.
+        """
+        if not value:
+            return value
+
+        esquema = urlparse(value).scheme.lower()
+        if esquema not in ('http', 'https'):
+            raise serializers.ValidationError(
+                'El enlace debe empezar por http:// o https://.'
+            )
+
+        return value

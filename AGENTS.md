@@ -88,7 +88,7 @@ retro-api/
 │  │  ├─ router.py            # DefaultRouter → consoles/games/accessories/images/components
 │  │  ├─ serializers/         # un archivo por modelo (+ item_base.py, image.py)
 │  │  └─ views/               # un ViewSet por recurso (view_<recurso>.py)
-│  ├─ migrations/             # 0001 → 0013
+│  ├─ migrations/             # 0001 → 0014
 │  ├─ admin.py                # Admin con ItemImageInline genérico
 │  └─ tests.py, views.py
 ├─ media/                     # Archivos subidos (NO versionado, servido en /media/)
@@ -247,7 +247,8 @@ recarga solo (el contenedor monta el código como volumen), aunque si se toca `s
 
 - `ItemBase` (**abstracto**, `inventory/models/Base.py:6`) define lo común: `name`, `model`,
   `acquisition_date`, `price` (precio del artículo), `total_price` (lo pagado con envío y gastos;
-  si se deja vacío, se copia `price`), `status`, `store`, `protective`, `description`, `region`,
+  si se deja vacío, se copia `price`), `purchase_url` (enlace del anuncio donde se compró, opcional),
+  `status`, `store`, `protective`, `description`, `region`,
   `platform`, `missing_components` (M2M), `complete`, `created_at`, `updated_at` e
   `images` (`GenericRelation` a `ItemImage`).
 - Hijos concretos: `Console`, `Game` (ambos con `edition`) y `Accessory`.
@@ -280,6 +281,9 @@ Base: `http://localhost:8000/api/` (en el frontend sale de `environment.apiUrl` 
 - **Precio**: `price` es el precio del artículo y `total_price` lo pagado con gastos. Si no se envía
   el total, el backend copia `price`; si el total es **menor** que el precio del artículo, la API
   responde 400 con `{"total_price": ["El total no puede ser menor que el precio del artículo."]}`.
+- **Enlace de compra**: `purchase_url` es opcional y **solo admite `http` y `https`** (máximo 500
+  caracteres). Cualquier otro esquema (`javascript:`, `data:`, `file:`) responde 400. El frontend lo
+  abre en pestaña nueva **siempre** con `rel="noopener noreferrer"`.
 - **Escritura de M2M**: se envía `missing_component_ids: [1, 2]` (write-only); la lectura devuelve
   `missing_components` (objetos) e `images` (URLs). El serializer expone además
   `status_display` y `platform_display`.
@@ -353,6 +357,11 @@ el coste en el plan.
   en `inventory/api/router.py` con `basename` explícito.
 - Consultas siempre optimizadas (ver §7.1) y permisos declarados explícitamente (ver §8.1).
 - Validaciones de negocio en el serializer (`validate_*` / `validate`), nunca en la vista.
+- **Admin**: si un `ModelAdmin` declara `fields`/`fieldsets`, cada nombre debe existir en **su**
+  modelo. Un nombre que no exista **no lo detecta `manage.py check`**: Django lanza
+  `FieldError: Unknown field(s) (…) specified for …` al **abrir** esa página (un 500 en la cara del
+  usuario). Lo vigila `inventory/tests/test_admin_inventario.py`; al tocar el admin, ejecutarlo.
+  Pasó en D2: se copió el bloque de `Console` (que tiene `edition`) a `Accessory`, que no lo tiene.
 - Migraciones: **nunca** editar una migración ya aplicada; crear una nueva y describirla.
 - Nada de lógica pesada en `save()` del modelo salvo el procesado de archivos ya existente.
 - `settings.py` lee todo del entorno con `django-environ` (fail-fast). No hardcodear secretos.

@@ -106,6 +106,15 @@ class ItemBase(models.Model):
         blank=True,
         verbose_name='precio total'
     )
+
+    # Enlace público del anuncio donde se compró (el que se puede volver a abrir),
+    # no la página del pedido, que suele caducar o requerir sesión.
+    purchase_url = models.URLField(
+        max_length=500,
+        null=True,
+        blank=True,
+        verbose_name='enlace de compra'
+    )
     
     status = models.CharField(
         max_length=10, 
