@@ -146,10 +146,16 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# Tiempo de duración del token
+# Configuración de los tokens JWT
 SIMPLE_JWT = {
+    # El modelo User usa el email como identificador de acceso (USERNAME_FIELD = 'email').
+    # Sin esta línea, SimpleJWT buscaría el campo 'username' por defecto y el login
+    # enviado desde el frontend (email + contraseña) devolvería un error 400.
+    'USERNAME_FIELD': 'email',
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # Guarda la fecha del último acceso correcto en el campo last_login del usuario.
+    'UPDATE_LAST_LOGIN': True,
 }
 
 # Configuración de Spectacular --> opcional pero recomendable
