@@ -1,9 +1,12 @@
 from rest_framework import viewsets, filters
+from rest_framework.permissions import IsAuthenticated
 from inventory.models.Accessory import Accessory
 from inventory.api.serializers.accessory import AccessorySerializer
 
 
 class AccessoryViewSet(viewsets.ModelViewSet):
+    # Inventario privado: sin token no se lee ni se escribe nada.
+    permission_classes = [IsAuthenticated]
     queryset = Accessory.objects.prefetch_related('missing_components', 'images').all()
     serializer_class = AccessorySerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]

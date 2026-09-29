@@ -1,4 +1,6 @@
 from rest_framework import viewsets, parsers
+from rest_framework.permissions import IsAuthenticated
+
 from inventory.models.Image import ItemImage
 from inventory.api.serializers.image import ImageSerializer, ImageUploadSerializer
 
@@ -6,6 +8,8 @@ class ItemImageViewSet(viewsets.ModelViewSet):
     """
     Endpoint de imágenes — acepta multipart/form-data para subida.
     """
+    # Inventario privado: sin token no se lee, no se sube y no se borra ninguna imagen.
+    permission_classes = [IsAuthenticated]
     # Evita el N+1 trayendo los tipos de contenido de golpe
     queryset = ItemImage.objects.select_related('content_type').all()
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]

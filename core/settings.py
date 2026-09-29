@@ -143,6 +143,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    # Regla de oro: denegar por defecto. Sin esta línea, DRF deja pasar cualquier petición aunque
+    # no lleve token: cualquiera podía leer, crear, editar y borrar el inventario. Con ella, toda
+    # vista nueva nace protegida, y solo se abre lo que se justifique con
+    # `permission_classes = [AllowAny]` (hoy, únicamente la vista de registro).
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
@@ -165,6 +172,7 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False, # Esto oculta el propio endpoint del esquema dentro de la lista de Swagger para que no ensucie la vista de tus rutas
 }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

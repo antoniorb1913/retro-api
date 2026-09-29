@@ -1,9 +1,12 @@
 from rest_framework import viewsets, filters
+from rest_framework.permissions import IsAuthenticated
 from inventory.models.Console import Console
 from inventory.api.serializers.console import ConsoleSerializer
 
 
 class ConsoleViewSet(viewsets.ModelViewSet):
+    # Inventario privado: sin token no se lee ni se escribe nada.
+    permission_classes = [IsAuthenticated]
     queryset = Console.objects.prefetch_related('missing_components', 'images').all()
     serializer_class = ConsoleSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
