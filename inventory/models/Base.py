@@ -93,7 +93,18 @@ class ItemBase(models.Model):
         max_digits=10, 
         decimal_places=2, 
         null=True, 
-        blank=True
+        blank=True,
+        verbose_name='precio del artículo'
+    )
+    
+    # Lo que costó el artículo con todo incluido (envío, comisiones, etc.).
+    # Lo escribe el usuario; si se deja vacío, el serializer copia `price`.
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='precio total'
     )
     
     status = models.CharField(
