@@ -55,6 +55,7 @@ Solo se anotan aquí las tareas **verificadas y confirmadas por el humano**.
 - **Hallazgo durante la verificación (no corregido, fuera del alcance de A1):** los endpoints del
   inventario responden **200 sin token**. Comprobado con `GET /api/consoles/` sin autenticación.
   Causa: los ViewSets no declaran `permission_classes` y DRF usa su valor por defecto (permitir a
-  cualquiera). Se corrige en la tarea **E4** del plan, con su propio test.
+  cualquiera). Se corrige en la tarea **E4** del plan, con su propio test. Está detallado en
+  `AGENTS.md` §11.5 (seguridad).
 
 - **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
