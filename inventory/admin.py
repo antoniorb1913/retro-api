@@ -13,29 +13,29 @@ class ItemImageInline(GenericTabularInline):
 
 @admin.register(Console)
 class ConsoleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'store', 'platform', 'region')
+    list_display = ('id', 'name', 'price', 'total_price', 'store', 'platform', 'region')
     list_filter = ('platform', 'region')
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
-    list_editable = ('price',)
+    list_editable = ('price', 'total_price')
 
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'store', 'platform', 'region')
+    list_display = ('id', 'name', 'price', 'total_price', 'store', 'platform', 'region')
     list_filter = ('platform', 'region')
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
-    list_editable = ('price',)
+    list_editable = ('price', 'total_price')
 
 
 @admin.register(Accessory)
 class AccessoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'store', 'platform')
+    list_display = ('id', 'name', 'price', 'total_price', 'store', 'platform')
     list_filter = ('platform',)
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
-    list_editable = ('price',)
+    list_editable = ('price', 'total_price')
 
 
 @admin.register(ItemImage)

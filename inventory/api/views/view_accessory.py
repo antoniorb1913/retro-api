@@ -8,5 +8,5 @@ class AccessoryViewSet(viewsets.ModelViewSet):
     serializer_class = AccessorySerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'model', 'platform', 'region']
-    ordering_fields = ['name', 'platform', 'status', 'created_at', 'price']
+    ordering_fields = ['name', 'platform', 'status', 'created_at', 'price', 'total_price']
     ordering = ['name']

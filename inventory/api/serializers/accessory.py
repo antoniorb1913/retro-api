@@ -22,8 +22,27 @@ class AccessorySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'model', 'platform', 'platform_display',
             'region', 'status', 'status_display', 'description',
-            'price', 'store', 'protective', 'acquisition_date', 'complete',
+            'price', 'total_price', 'store', 'protective', 'acquisition_date', 'complete',
             'missing_components', 'missing_component_ids',
             'images', 'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def validate(self, attrs):
+        """
+        Reglas del total:
+          - Si no se indica, se copia el precio del artículo (no hay gastos añadidos).
+          - Si se indica y es menor que el precio del artículo, se rechaza: el total incluye
+            el artículo más envío y gastos, así que nunca puede ser menor.
+        """
+        price = attrs.get('price', getattr(self.instance, 'price', None))
+        total_price = attrs.get('total_price', getattr(self.instance, 'total_price', None))
+
+        if total_price in (None, '') and price not in (None, ''):
+            attrs['total_price'] = price
+        elif total_price not in (None, '') and price not in (None, '') and total_price < price:
+            raise serializers.ValidationError({
+                'total_price': 'El total no puede ser menor que el precio del artículo.',
+            })
+
+        return attrs
