@@ -18,6 +18,10 @@ class ConsoleAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
     list_editable = ('price', 'total_price')
+    # `purchase_url` se edita en la ficha del artículo, no en la lista: es una URL larga.
+    fields = ('name', 'edition', 'model', 'platform', 'region', 'status', 'description',
+              'price', 'total_price', 'purchase_url', 'acquisition_date', 'store',
+              'protective', 'complete', 'missing_components')
 
 
 @admin.register(Game)
@@ -27,6 +31,10 @@ class GameAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
     list_editable = ('price', 'total_price')
+    # `purchase_url` se edita en la ficha del artículo, no en la lista: es una URL larga.
+    fields = ('name', 'edition', 'model', 'platform', 'region', 'status', 'description',
+              'price', 'total_price', 'purchase_url', 'acquisition_date', 'store',
+              'protective', 'complete', 'missing_components')
 
 
 @admin.register(Accessory)
@@ -36,6 +44,10 @@ class AccessoryAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
     list_editable = ('price', 'total_price')
+    # `purchase_url` se edita en la ficha del artículo, no en la lista: es una URL larga.
+    fields = ('name', 'model', 'platform', 'region', 'status', 'description',
+              'price', 'total_price', 'purchase_url', 'acquisition_date', 'store',
+              'protective', 'complete', 'missing_components')
 
 
 @admin.register(ItemImage)

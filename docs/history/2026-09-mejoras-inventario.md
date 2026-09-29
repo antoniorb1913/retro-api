@@ -135,3 +135,87 @@ Solo se anotan aquí las tareas **verificadas y confirmadas por el humano**.
   `AGENTS.md` §12.3.
 
 - **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
+
+---
+
+## D2. Enlace de compra y botón "Ver compra"
+
+- **¿Qué realiza?:** añade un campo **`purchase_url`** ("Enlace de compra") a consolas, juegos y
+  accesorios. En la ficha del artículo aparece un botón **"Ver compra"** que abre ese enlace **en
+  pestaña nueva**. El botón solo se muestra si el artículo tiene enlace.
+
+- **¿Por qué?:** al catalogar un artículo comprado de segunda mano se pierde la referencia del
+  anuncio (precio de mercado, fotos, estado descrito, vendedor). Guardando el enlace se puede
+  volver a consultar. Se descartó a propósito un comparador automático de precios de
+  Wallapop/Vinted (no tienen API pública y hacer scraping no es aceptable), decisión del humano.
+
+- **Decisión de diseño:** se guarda el enlace del **anuncio público**, no el de la página del
+  pedido: los pedidos suelen requerir sesión iniciada y caducan, así que dejarían de funcionar.
+
+- **Dónde verlo:**
+  - `retro-api/inventory/models/Base.py` (líneas 110-117: campo `purchase_url`, `URLField` de 500
+    caracteres, opcional; definido en `ItemBase`, así que lo heredan los tres modelos)
+  - `retro-api/inventory/migrations/0014_accessory_purchase_url_console_purchase_url_and_more.py`
+    (líneas 13, 18 y 23: añade la columna a las tres tablas; no hay datos que migrar)
+  - `retro-api/inventory/api/serializers/console.py`, `game.py` y `accessory.py` (línea 27: el campo
+    en la lista de la API; 52-66: la validación del enlace; 1-3: el import de `urlparse`)
+  - `retro-api/inventory/admin.py` (líneas 22, 35 y 48: el campo en los formularios del admin)
+  - `retro-api/inventory/tests/test_d2_enlace_compra.py` (8 tests) y
+    `retro-api/inventory/tests/test_admin_inventario.py` (3 tests, ver el fallo encontrado abajo)
+
+- **Cómo verificar:**
+  1. **Tests de la tarea:**
+     `docker compose exec api python manage.py test inventory.tests.test_d2_enlace_compra`
+     → `Ran 8 tests` / `OK`.
+  2. **Tests del admin:** `docker compose exec api python manage.py test inventory.tests.test_admin_inventario`
+     → `Ran 3 tests` / `OK`.
+  3. **Suite completa:** `docker compose exec api python manage.py test` → `Ran 21 tests` / `OK`.
+  4. **La API en vivo:** `curl -s http://localhost:8000/api/consoles/` → cada artículo tiene
+     `"purchase_url"`.
+  5. **Rechazo de enlaces peligrosos** (comprobado por curl el 29/09/2026):
+     `curl -X POST http://localhost:8000/api/consoles/ -H "Content-Type: application/json" -d '{"name":"x","purchase_url":"javascript:alert(1)"}'`
+     → **HTTP 400**.
+  6. **URL demasiado larga** (541 caracteres) → **HTTP 400**, no un error 500.
+  7. **El admin:** las seis páginas de inventario (`/admin/inventory/console/`, `/game/`,
+     `/accessory/` y sus `add/`) responden 200 y el campo se puede rellenar desde la ficha.
+  8. **En la app** (parte de frontend, detallada en `retro-app/docs/history/`): el formulario pide el
+     enlace y la ficha muestra el botón.
+
+- **Tests añadidos:**
+  - `inventory/tests/test_d2_enlace_compra.py` (8):
+    - `test_guarda_un_enlace_valido` (48): un enlace normal se guarda y se devuelve.
+    - `test_el_enlace_es_opcional` (56): se puede crear sin enlace.
+    - `test_acepta_http_y_https` (63): los dos esquemas web válidos se aceptan.
+    - `test_rechaza_esquemas_peligrosos` (70): `javascript:`, `data:` y `file:` → 400.
+    - `test_rechaza_lo_que_no_es_una_url` (87): texto suelto → 400.
+    - `test_rechaza_un_enlace_demasiado_largo` (94): más de 500 caracteres → 400.
+    - `test_el_enlace_se_puede_editar_y_vaciar` (104): se cambia y se borra con PATCH.
+    - `test_aparece_en_el_listado` (126): el listado devuelve el campo.
+  - `inventory/tests/test_admin_inventario.py` (3): que los campos declarados en el admin existan
+    de verdad en el modelo, que las seis páginas abran y que el enlace esté en el formulario.
+
+- **Seguridad (lo importante de esta tarea):** un enlace que se pinta en pantalla es un punto de
+  ataque, así que:
+  - El backend **solo** acepta `http` y `https`. Cualquier otro esquema se rechaza con 400
+    (`javascript:alert(1)`, `data:text/html,<script>…`, `file:///etc/passwd`).
+  - El frontend abre el enlace con `target="_blank"` **y `rel="noopener noreferrer"`**, que impide
+    que la página destino manipule la aplicación desde `window.opener`.
+  - La longitud máxima (500) se valida con un 400 claro en vez de romper en la base de datos.
+
+- **Fallo encontrado y corregido durante esta tarea (importante):** al añadir el campo al admin se
+  declaró por error la lista de campos de `Accessory` **con `edition`**, un campo que ese modelo no
+  tiene (se copió del bloque de `Console`). Eso **no lo detecta `manage.py check`**: Django lanza
+  `FieldError: Unknown field(s) (edition) specified for Accessory` al **abrir** la página del admin,
+  es decir, un 500 en la cara del usuario y solo en producción si nadie entra antes. Se detectó
+  abriendo las páginas del admin una a una. Se corrigió y se añadió el test
+  `test_los_formularios_declarados_usan_campos_reales`, **comprobado al revés**: reintroduciendo el
+  fallo a propósito, el test falla con `'edition' : Accessory declara campos que no existen`.
+
+- **Rama de trabajo:** `enlace-compra` (en `retro-api` y en `retro-app`).
+
+- **Archivos tocados en el backend:** `inventory/models/Base.py`, los 3 serializers,
+  `inventory/admin.py`, la migración 0014 (nueva), `inventory/tests/test_d2_enlace_compra.py`
+  (nuevo) y `inventory/tests/test_admin_inventario.py` (nuevo). **En el frontend, 10 archivos**
+  (ver el historial de `retro-app`).
+
+- **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
