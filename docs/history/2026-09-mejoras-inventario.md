@@ -303,3 +303,91 @@ Solo se anotan aquí las tareas **verificadas y confirmadas por el humano**.
   `user/api/views.py` y `inventory/tests/test_e4_permisos.py` (nuevo).
 
 - **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
+
+---
+
+## E5. Validar el destino al subir imágenes (se aceptaban artículos que no existen)
+
+- **¿Qué realiza?:** cierra el endpoint de imágenes. Antes, al subir una foto:
+  1. Se aceptaba **cualquier `object_id`**, aunque no existiera ningún artículo con ese id: la API
+     respondía **201** y creaba una **carpeta fantasma** en el disco
+     (`media/consoles/unknown-999999/…`).
+  2. Un `content_type_model` inventado **no** daba un error controlado: reventaba con
+     `DoesNotExist` y Django devolvía una **página 500 con la traza completa** (rutas internas y
+     versiones incluidas).
+  3. Se podía decir que la foto pertenece a **cualquier** modelo de la app `inventory`, incluidos
+     los que no deben llevar imágenes, como `missingcomponent` (el catálogo de piezas).
+
+  Ahora el destino tiene que ser un **artículo real** y de uno de los tres tipos permitidos
+  (consola, juego o accesorio); en cualquier otro caso la API responde **400 con un mensaje claro**
+  y **no escribe nada** en el disco.
+
+- **¿Por qué?:** es la continuación directa de E4. Desde E4 solo el dueño puede subir archivos, pero
+  **el propio dueño** podía llenar el servidor de imágenes huérfanas sin querer (un id equivocado
+  basta), y esas imágenes no se pueden ni ver ni borrar desde la aplicación porque no cuelgan de
+  ningún artículo. Además, el 500 con traza es una fuga de información interna.
+
+- **Dónde verlo:**
+  - `retro-api/inventory/api/serializers/image.py` (línea 20: la lista cerrada
+    `MODELOS_CON_IMAGENES`; 22-23: el mensaje único; 26-58: el mixin con la validación compartida;
+    61 y 87: los dos serializers que ahora la heredan)
+  - `retro-api/inventory/tests/test_e5_imagenes.py` (los 10 tests)
+
+- **Decisión de diseño (una sola pieza para los dos serializers):** el fallo de raíz fue que
+  **solo uno de los dos** serializers validaba, y el que se usaba al subir (`ImageUploadSerializer`)
+  era justo el que no. La validación vive ahora en un **mixin** que heredan los dos, así que es
+  **físicamente imposible** que uno se quede sin ella. Se aplica al principio del proyecto
+  (`AGENTS.md` §5.3.3: una responsabilidad por pieza) sin duplicar código.
+
+- **Decisión de diseño (lista cerrada en vez de `try/except`):** el 500 se elimina **por
+  construcción**, no tapando el síntoma. Al declarar `content_type_model` como `ChoiceField`, DRF
+  rechaza cualquier valor fuera de la lista **antes** de llegar al código que consultaba la base de
+  datos. Un `try/except DoesNotExist` habría dejado el agujero abierto para el siguiente caso no
+  previsto.
+
+- **Cómo verificar:**
+  1. **Tests de la tarea:** `docker compose exec api python manage.py test inventory.tests.test_e5_imagenes`
+     → `Ran 10 tests` / `OK`.
+  2. **Suite completa:** `docker compose exec api python manage.py test` → `Ran 41 tests` / `OK`.
+  3. **El agujero existía de verdad:** los mismos tests se ejecutaron **antes** de aplicar el
+     arreglo y **fallaron 9 de 10**. Resultados reales de esa ejecución:
+     - `object_id=999999` → **201**, con la ruta `media/consoles/unknown-999999/foto.webp`.
+     - `content_type_model=noexiste` → **ERROR** `ContentType.DoesNotExist` (el 500 con traza).
+     - `content_type_model=missingcomponent` → **201**, creando `media/missingcomponents/caja-1/`.
+  4. **Contra la API en vivo** (comprobado el 29/09/2026 con `curl` y un token real):
+     los tres casos inválidos → **400** con mensaje claro; una subida correcta → **201**.
+  5. **En la aplicación** (comprobado por el humano el 29/09/2026): subir una foto desde el
+     formulario de un artículo sigue funcionando igual.
+
+- **Tests añadidos:** `retro-api/inventory/tests/test_e5_imagenes.py` (10). Usan una **carpeta
+  temporal** de `media/` (`override_settings`), así que no ensucian los archivos reales:
+  - `test_una_subida_correcta_funciona` (113): la subida válida sigue dando 201 y guarda el archivo.
+  - `test_se_puede_subir_a_los_tres_tipos` (129): consolas, juegos y accesorios.
+  - `test_rechaza_un_object_id_que_no_existe` (147): el fallo principal → 400 y sin crear la fila.
+  - `test_un_object_id_inexistente_no_deja_archivos` (158): el rechazo **no deja basura** en disco.
+  - `test_el_object_id_debe_ser_del_tipo_indicado` (171): un id que existe pero es de otro tipo.
+  - `test_rechaza_un_content_type_model_inventado_sin_reventar` (186): el 500 pasa a ser 400.
+  - `test_rechaza_un_modelo_que_no_debe_llevar_fotos` (196): `missingcomponent` se rechaza.
+  - `test_rechaza_modelos_que_no_son_de_inventario` (206): `user`, `contenttype`, `session`.
+  - `test_rechaza_si_falta_el_modelo` (213): el destino es obligatorio.
+  - `test_el_serializer_de_lectura_tambien_valida` (229): el otro serializer también valida.
+
+- **Hallazgo durante la tarea (datos del humano, ya resuelto):** revisando las imágenes se
+  detectaron **2 filas que apuntaban a archivos inexistentes** en el accesorio *"Demo Winter
+  Releases '98"* (id 6), subidas el 03/07/2026: `accessorys/demo-winter-releases-98-6/DISCO.webp` y
+  `.../demo_Winter_Releases_98.webp`. **La carpeta entera faltaba en el disco** (comprobado desde el
+  host y desde el contenedor). Se avisó al humano, que **borró esas dos imágenes y subió una nueva**
+  desde la aplicación. Estado final comprobado: **247 imágenes y 0 referencias rotas**. Este caso es
+  justo el tipo de problema que E5 evita que se repita (aunque aquel venía de antes: los archivos se
+  borraron del disco sin pasar por la aplicación).
+
+- **Nota:** no hizo falta **ninguna migración** (F1 ni cambios de esquema): todo el trabajo es
+  validación en el serializer, tal como pedía el plan.
+
+- **Rama de trabajo:** `seguridad-calidad` (`retro-api`). Como E4, es solo de backend; en
+  `retro-app` no se tocó nada.
+
+- **Archivos tocados:** `inventory/api/serializers/image.py` y
+  `inventory/tests/test_e5_imagenes.py` (nuevo).
+
+- **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.

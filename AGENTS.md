@@ -288,7 +288,10 @@ Base: `http://localhost:8000/api/` (en el frontend sale de `environment.apiUrl` 
   `missing_components` (objetos) e `images` (URLs). El serializer expone además
   `status_display` y `platform_display`.
 - **Subida de imagen** (`POST /api/images/`, `multipart/form-data`): campos `image`,
-  `content_type_model` (`console` | `game` | `accessory`) y `object_id`.
+  `content_type_model` y `object_id`. Desde E5 (29/09/2026) **`content_type_model` es una lista
+  cerrada** (`console` | `game` | `accessory`) y el artículo indicado por `object_id` **tiene que
+  existir**; si no, la API responde **400** con el motivo y **no escribe nada en el disco**.
+  El objeto destino es obligatorio (`object_id` debe ser ≥ 1).
 - **Auth**: access token 60 min, refresh 7 días. Cabecera `Authorization: Bearer <access>`.
   El login se hace con **`email` + `password`** (`SIMPLE_JWT['USERNAME_FIELD'] = 'email'` en
   `core/settings.py`), **no** con `username`. Ojo: la ruta sigue siendo `/api/api/token/`
@@ -763,7 +766,11 @@ no una lista de cambios a ejecutar:
 7. `.env` con `DJANGO_DEBUG=True`, `ALLOWED_HOSTS` local y una `SECRET_KEY` `django-insecure-*`:
    hay que rotarla y separar configuración de desarrollo/producción antes de desplegar.
    El `.env` está en `.gitignore` (bien) y no debe versionarse nunca.
-8. `ImageSerializer` acepta cualquier `object_id` (entero) sin comprobar que el objeto exista.
+8. ✅ **RESUELTO (tarea E5, 29/09/2026)**: la subida de imágenes aceptaba cualquier `object_id`
+   (creaba carpetas fantasma `unknown-<id>`), un `content_type_model` inventado daba **500 con la
+   traza** y se podían colgar fotos de modelos que no deben llevarlas. Ahora el destino está en
+   lista cerrada (`console`/`game`/`accessory`) y el artículo debe existir; si no, **400**. Cubierto
+   por `inventory/tests/test_e5_imagenes.py` (10 tests).
 9. `Dockerfile` no define `USER` no-root ni `CMD` por defecto (el comando lo pone
    `docker-compose.yml` como `runserver`, solo para desarrollo).
 10. Los signals de borrado de imágenes usan `os.remove` apoyándose en `instance.image.path`
