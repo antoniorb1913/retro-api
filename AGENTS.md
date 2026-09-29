@@ -419,9 +419,11 @@ Backend (`retro-api`):
   la de desarrollo). Para una sola tarea:
   `docker compose exec api python manage.py test inventory.tests.test_a1_login`.
 - **Ojo con la estructura de tests**: Django falla con `ImportError: 'tests' module incorrectly
-  imported` si conviven `inventory/tests.py` (archivo) y `inventory/tests/` (paquete). Existía ese
-  choque desde A1 y se corrigió el 29/09/2026 eliminando el archivo vacío: **los tests van en el
-  paquete** `inventory/tests/`, nunca en un `tests.py` suelto.
+  imported` si conviven `<app>/tests.py` (el archivo vacío que trae Django) y `<app>/tests/`
+  (el paquete). Es un choque que **ya ha pasado tres veces** (en `inventory` al crear sus tests, y
+  en `user` en D2 y E6): **los tests van en el paquete** `<app>/tests/` con su `__init__.py`, así
+  que al crear tests en una app nueva hay que **borrar su `tests.py`**. Si la app no va a tener
+  tests todavía, no se crea la carpeta.
 
 Frontend (`retro-app`):
 - Framework: **Vitest** (ya configurado con jsdom) + `HttpTestingController` para HTTP.
@@ -555,9 +557,18 @@ Reglas comunes:
   entorno, nunca en duro (§12.1).
 - El admin de Django (`/admin/`) no se expone públicamente sin necesidad.
 - `ALLOWED_HOSTS` y `CORS_ALLOWED_ORIGINS` son listas **exactas** por entorno: nada de comodines.
-- **Throttling de DRF** obligatorio en los endpoints sensibles: login/refresh de token y subida de
-  imágenes. Se configura con `DEFAULT_THROTTLE_CLASSES`/`DEFAULT_THROTTLE_RATES` y
-  `ScopedRateThrottle` por vista; los límites se acuerdan en el plan de la tarea, no se inventan.
+- **Throttling de DRF: ya está puesto** (tarea E6, 30/09/2026). Los límites viven en
+  `DEFAULT_THROTTLE_RATES` (`core/settings.py`) y cada vista los activa con `throttle_scope`:
+  `login` y `refresh` a **10/min**, `subida` de imágenes a **20/hora**. Los contadores son
+  independientes entre sí. Cualquier endpoint sensible nuevo debe llevar su propio ámbito.
+  - Para eximir al dueño (`is_staff`) se usa `user/api/throttles.py` → `ThrottleConExencionStaff`.
+    **Ojo**: la exención solo actúa donde la petición ya va autenticada. En el **login no funciona**
+    (quien pide un token todavía es anónimo, así que el límite se cuenta por IP); está documentado
+    en el código y fijado con un test, no es un fallo.
+  - Los límites **no se pueden cambiar con `override_settings` en los tests**: DRF los lee una sola
+    vez al cargar su módulo (`SimpleRateThrottle.THROTTLE_RATES` es un atributo de clase). Los
+    tests de throttling usan los límites reales y limpian la caché en `setUp`, porque los
+    contadores no se borran solos entre tests.
 - Los errores de autenticación no revelan si el fallo es el email o la contraseña.
 - Ninguna respuesta incluye versión del servidor, trazas ni rutas internas.
 

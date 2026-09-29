@@ -391,3 +391,107 @@ Solo se anotan aquí las tareas **verificadas y confirmadas por el humano**.
   `inventory/tests/test_e5_imagenes.py` (nuevo).
 
 - **Estado:** ✅ Completada — confirmada por el humano el 29 de septiembre de 2026.
+
+---
+
+## E6. Freno de intentos en el login y en la subida de imágenes
+
+- **¿Qué realiza?:** limita cuántas veces se pueden intentar ciertas acciones:
+  - **Login** (`POST /api/api/token/`): **10 intentos por minuto**. A partir de ahí, **429** (Too
+    Many Requests) en vez de seguir atendiendo.
+  - **Refresco de token** (`POST /api/api/token/refresh/`): 10 por minuto, con su propio contador.
+  - **Subida de imágenes** (`POST /api/images/`): **20 por hora**, también con contador propio.
+
+  Los contadores son **independientes**: gastar intentos de login no afecta a las subidas.
+
+- **¿Por qué?:** era el último de los tres agujeros de seguridad serios del plan. Sin límite, se
+  pueden probar contraseñas a miles por minuto con un programa (fuerza bruta). Los otros dos ya se
+  cerraron: E4 (la API estaba abierta a cualquiera) y E5 (la subida aceptaba destinos falsos).
+
+- **Dónde verlo:**
+  - `retro-api/core/settings.py` (líneas 153-168: `DEFAULT_THROTTLE_CLASSES` y
+    `DEFAULT_THROTTLE_RATES` con los tres límites y el porqué de cada número)
+  - `retro-api/user/api/throttles.py` (línea 14: `ThrottleConExencionStaff`, con la explicación de
+    hasta dónde llega la exención del dueño)
+  - `retro-api/user/api/views_token.py` (línea 15: `LoginConLimiteView`; 24:
+    `RefreshConLimiteView`) — heredan de las vistas de SimpleJWT solo para añadirles el freno
+  - `retro-api/user/api/router.py` (líneas 6-7: se usan esas vistas en vez de las de la librería)
+  - `retro-api/inventory/api/views/view_image.py` (líneas 13-17: el freno de subidas)
+  - `retro-api/inventory/tests/test_e6_throttling.py` (los 10 tests)
+
+- **Decisión de diseño (los números):** se eligieron mirando el uso real, no al azar:
+  - **10/min en login**: una persona se equivoca 1 o 2 veces, así que no le afecta; a un programa
+    que prueba contraseñas lo para en seco. Además, la suite de tests hace 7 logins en 3 segundos,
+    así que el límite no rompe las pruebas.
+  - **20/hora en subidas**: cada imagen se convierte a WebP y se escribe en disco. Una sesión
+    normal de catalogar no llega a esa cifra.
+  - Los números viven en `settings.py` (y no en el código de las vistas) para poder ajustarlos sin
+    tocar lógica.
+
+- **Decisión de diseño (la exención del dueño):** en una aplicación de un solo usuario, un límite
+  bajo hace que el propio dueño se bloquee mientras prueba. Por eso las vistas usan
+  `ThrottleConExencionStaff`, que deja pasar a `is_staff`. **Importante**: esa exención solo
+  funciona donde la petición ya va autenticada (la subida de imágenes, que manda el token). **En el
+  login no puede funcionar** y no es un fallo del código: cuando alguien pide un token todavía no
+  ha demostrado quién es, así que DRF ve un usuario anónimo y cuenta el límite **por IP**. Es decir,
+  el dueño también se frena si se pasa al entrar; con 10/min que se recuperan solos, en la práctica
+  no molesta. Queda documentado en el código y con un test que fija ese comportamiento
+  (`test_el_login_tambien_frena_al_dueno`) para que nadie lo "arregle" creyendo que es un error.
+
+- **Cómo verificar:**
+  1. **Tests de la tarea:** `docker compose exec api python manage.py test inventory.tests.test_e6_throttling`
+     → `Ran 10 tests` / `OK`.
+  2. **Suite completa:** `docker compose exec api python manage.py test` → `Ran 51 tests` / `OK`.
+  3. **El agujero existía de verdad:** los tests se ejecutaron **antes** de aplicar el freno y
+     **fallaron 5 de 7**. Resultados reales: 6 intentos de login seguidos → `[200, 200, 200, 200,
+     200, 200]` (ninguno frenado) y 5 subidas seguidas → `[201, 201, 201, 201, 201]`.
+  4. **Contra la API en vivo** (comprobado el 30/09/2026, 12 intentos con contraseña mala):
+     `401` en los 10 primeros y **`429` en el 11 y el 12**.
+  5. **El freno es temporal, no un bloqueo:** pasados 70 segundos, un login correcto vuelve a
+     responder **200** y con su token se leen las consolas (**200**).
+  6. **Lo que no se ha roto:** `/api/docs/` sigue en 200 y `/api/consoles/` sin token sigue en 401.
+
+- **Tests añadidos:** `retro-api/inventory/tests/test_e6_throttling.py` (10):
+  - `test_pasarse_de_intentos_en_el_login_devuelve_429`
+  - `test_no_frena_antes_de_pasarse` (no se frena de más)
+  - `test_el_freno_es_temporal_no_un_bloqueo`
+  - `test_un_usuario_normal_se_bloquea`
+  - `test_entrar_dentro_del_limite_funciona`
+  - `test_el_refresh_tiene_su_propio_limite`
+  - `test_el_login_tambien_frena_al_dueno` (deja escrito el comportamiento real de la exención)
+  - `test_el_dueno_no_se_frena_al_subir_imagenes` (la exención donde sí funciona)
+  - `test_la_subida_de_imagenes_tiene_su_propio_limite`
+  - `test_subir_imagenes_no_gasta_el_limite_del_login`
+
+  Los límites de los tests se **leen del freno real** (no se escriben a mano), así que si algún día
+  se ajustan los números en `settings.py`, los tests siguen valiendo.
+
+- **Aprendizaje importante al escribir los tests (documentado en el archivo):** los límites de DRF
+  **no se pueden cambiar con `override_settings`**. DRF los lee **una sola vez**, al cargar su
+  módulo (`SimpleRateThrottle.THROTTLE_RATES` es un atributo de clase). El primer intento de test
+  parecía comprobar un límite de 3/min cuando en realidad se aplicaba el de producción, y daba un
+  "no frena" que no significaba nada. Además, `override_settings(CACHES=…)` **no aísla** el freno:
+  lo que aísla de verdad es limpiar la caché en `setUp`, porque los contadores no se borran entre
+  tests. Las dos trampas quedaron explicadas en la cabecera del archivo de tests.
+
+- **Fallo encontrado y corregido durante esta tarea:** al crear `user/tests/` para un test temporal
+  se reprodujo el **choque de nombres** que ya se corrigió en D1 (`user/tests.py` conviviendo con
+  `user/tests/`): `ImportError: 'tests' module incorrectly imported`. Se comprobó que la carpeta
+  solo contenía el `__init__.py` vacío, se restauró `user/tests.py` y se eliminó la carpeta vacía.
+
+- **Deuda anotada (frontend, NO se tocó):** el login de la aplicación muestra **"Credenciales
+  inválidas"** ante cualquier error ([`login.component.ts`, líneas 32-35](retro-app/src/app/features/auth/login.component.ts#L32)):
+  ```ts
+  error: () => { this.error.set('Credenciales inválidas'); }
+  ```
+  Desde E6, la API puede responder **429** por demasiados intentos, y en ese caso el mensaje sería
+  engañoso (la contraseña puede ser correcta). Se propone como tarea corta aparte.
+
+- **Rama de trabajo:** `seguridad-calidad` (`retro-api`). Es una tarea de backend; en `retro-app`
+  no se tocó nada.
+
+- **Archivos tocados:** `core/settings.py`, `user/api/router.py`,
+  `inventory/api/views/view_image.py`, `user/api/throttles.py` (nuevo),
+  `user/api/views_token.py` (nuevo) e `inventory/tests/test_e6_throttling.py` (nuevo).
+
+- **Estado:** ✅ Completada — confirmada por el humano el 30 de septiembre de 2026.
