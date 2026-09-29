@@ -151,6 +151,21 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Freno de intentos (tarea E6). Los números se leen de aquí para poder ajustarlos sin tocar
+    # código. Cada límite se cuenta por separado: gastar intentos de login no afecta a las
+    # subidas de imágenes, y al revés.
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        # Entrar y refrescar el token: una persona se equivoca 1 o 2 veces, así que 10 no molesta;
+        # a un programa que prueba contraseñas lo para en seco.
+        'login': '10/min',
+        'refresh': '10/min',
+        # Subir imágenes: cada archivo se convierte a WebP y se escribe en disco. Una sesión
+        # normal de catalogar no llega a 20 en una hora.
+        'subida': '20/hour',
+    },
 }
 
 # Configuración de los tokens JWT
