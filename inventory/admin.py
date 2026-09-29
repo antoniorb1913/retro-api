@@ -13,7 +13,7 @@ class ItemImageInline(GenericTabularInline):
 
 @admin.register(Console)
 class ConsoleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'platform', 'region')
+    list_display = ('id', 'name', 'price', 'store', 'platform', 'region')
     list_filter = ('platform', 'region')
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
@@ -22,7 +22,7 @@ class ConsoleAdmin(admin.ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'platform', 'region')
+    list_display = ('id', 'name', 'price', 'store', 'platform', 'region')
     list_filter = ('platform', 'region')
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]
@@ -31,7 +31,7 @@ class GameAdmin(admin.ModelAdmin):
 
 @admin.register(Accessory)
 class AccessoryAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'price', 'platform')
+    list_display = ('id', 'name', 'price', 'store', 'platform')
     list_filter = ('platform',)
     search_fields = ('name', 'description')
     inlines = [ItemImageInline]

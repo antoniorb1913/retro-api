@@ -22,7 +22,7 @@ class AccessorySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'model', 'platform', 'platform_display',
             'region', 'status', 'status_display', 'description',
-            'price', 'acquisition_date', 'complete',
+            'price', 'store', 'protective', 'acquisition_date', 'complete',
             'missing_components', 'missing_component_ids',
             'images', 'created_at', 'updated_at',
         ]
