@@ -52,6 +52,28 @@ class ItemBase(models.Model):
         ('GEN', 'Generica / PC'),
     ]
     
+    STORE_CHOICES = [
+        ('Wallapop', 'Wallapop'),
+        ('Vinted', 'Vinted'),
+        ('Ebay', 'Ebay'),
+        ('Milanuncios', 'Milanuncios'),
+        ('Cash Converters', 'Cash Converters'),
+        ('Game', 'Game'),
+        ('Cex', 'Cex'),
+        ('Amazon', 'Amazon'),
+        ('Fnac', 'Fnac'),
+        ('Carrefour', 'Carrefour'),
+        ('Media Markt', 'Media Markt'),
+        ('El Corte Inglés', 'El Corte Inglés'),
+        ('PcComponentes', 'PcComponentes'),
+    ]
+    
+    PROTECTIVE_CHOICES = [
+        ('Sin funda', 'Sin funda'),
+        ('Bolsa plástica', 'Bolsa plástica'),
+        ('Funda PET', 'Funda PET'),
+    ]
+    
     name = models.CharField(
         max_length=200
     )
@@ -78,6 +100,18 @@ class ItemBase(models.Model):
         max_length=10, 
         choices=STATUS_CHOICES, 
         default='GOOD'
+    )
+    
+    store = models.CharField(
+        max_length=20,
+        choices=STORE_CHOICES,
+        default='-'
+    )
+    
+    protective = models.CharField(
+        max_length=20,
+        choices=PROTECTIVE_CHOICES,
+        default='Sin funda'
     )
     
     description = models.TextField(
