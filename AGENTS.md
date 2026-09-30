@@ -32,7 +32,7 @@ Cuando haya conflicto entre fuentes, gana la de más arriba:
 1. **Instrucción directa del humano** en la conversación (por encima de todo).
 2. **Este `AGENTS.md`** (las reglas de este documento; hay una copia en cada repo y son las
    que se versionan).
-3. `docs/PLAN.md` del listado de tareas en curso (estado y alcance de la tarea actual).
+3. `retro-api/docs/PLAN.md` del listado de tareas en curso (estado y alcance de la tarea actual).
 4. `retro-api/docs/history/` y `retro-app/docs/history/` (histórico de lo ya hecho y verificado).
 5. `retro-api/README.md`, `retro-app/README.md`.
 6. `retro-app/HISTORIAL.md` → histórico **antiguo**, se conserva solo como referencia; puede
@@ -647,7 +647,7 @@ Reglas comunes:
 ### 9.2 Ciclo obligatorio de cada tarea (con puerta de confirmación)
 
 ```
-1. PLAN     → el humano dicta el listado de tareas; se anota en docs/PLAN.md
+1. PLAN     → el humano dicta el listado de tareas; se anota en `retro-api/docs/PLAN.md`
               (objetivo, alcance, tareas numeradas, criterio de aceptación, riesgos).
 2. AVISO    → antes de escribir código: qué se va a tocar (archivos) y cómo. OK del humano.
 3. IMPLEMENTAR una única tarea del plan (la marcada como en curso).
@@ -661,7 +661,7 @@ Reglas comunes:
 6. Si el humano dice que NO (o pide cambios) → corregir y volver al paso 4.
    Si dice que SÍ (bien / ok / correcto):
       a. Escribir el documento de la tarea (plantilla de §10) en la carpeta de historial.
-      b. Marcar la tarea como completada en docs/PLAN.md (con fecha y enlace al documento).
+      b. Marcar la tarea como completada en `retro-api/docs/PLAN.md` (con fecha y enlace al documento).
       c. Pasar a la siguiente tarea del plan (volviendo al paso 2).
 ```
 
@@ -716,7 +716,7 @@ propuestas del agente encajen con el trabajo del humano y para que el historial 
 
 | Documento | Ubicación | Contenido |
 |---|---|---|
-| Plan del listado de tareas | `docs/PLAN.md` (raíz del workspace; **pendiente de mover a `retro-api/docs/PLAN.md`** para que se versione en Git) | objetivo, tareas numeradas y su estado, criterio de aceptación |
+| Plan del listado de tareas | **`retro-api/docs/PLAN.md`** (versionado en Git desde el 30/09/2026; antes vivía en la raíz del workspace, sin versionar) | objetivo, tareas numeradas y su estado, criterio de aceptación |
 | Historial de tareas del backend | `retro-api/docs/history/` | **un `.md` por listado de tareas** con las tareas completadas y confirmadas del backend |
 | Historial de tareas del frontend | `retro-app/docs/history/` | igual, cuando el listado afecte al frontend |
 
@@ -758,7 +758,7 @@ Requisitos de calidad del documento:
 - "Cómo verificar" debe poder seguirlo otra persona sin contexto previo.
 - Si la tarea dejó deuda técnica o algo pendiente, se anota al final de su apartado.
 
-### 10.3 Formato del plan (`docs/PLAN.md`)
+### 10.3 Formato del plan (`retro-api/docs/PLAN.md`)
 
 ```markdown
 # PLAN — <nombre del listado>

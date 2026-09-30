@@ -1,6 +1,7 @@
 # Historial — Mejoras de RETRO_INVENTORY
 
-Documento de historial del listado de tareas **"Mejoras de RETRO_INVENTORY"** (ver `docs/PLAN.md`).
+Documento de historial del listado de tareas **"Mejoras de RETRO_INVENTORY"** (ver `PLAN.md`, en
+esta misma carpeta `docs/`).
 Solo se anotan aquí las tareas **verificadas y confirmadas por el humano**.
 
 - **Rama de trabajo:** `mejoras-inventario` (en `retro-api` y en `retro-app`)
