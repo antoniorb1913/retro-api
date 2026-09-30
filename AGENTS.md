@@ -434,12 +434,22 @@ Frontend (`retro-app`):
 - Los componentes se prueban con `TestBed`; nunca se llama a un servicio real (mock o
   `HttpTestingController`).
 - Comando: `npm test`.
-- **⚠️ Hoy `npm test` NO arranca** (comprobado el 30/09/2026): `src/app/app.spec.ts` es un resto de
-  la plantilla de Angular que importa `./app`, y el archivo real es `app.component.ts`, así que
-  falla con `TS2307: Cannot find module './app'`. Es la tarea **E1/F2** del plan. Consecuencia
-  práctica: **mientras eso no se arregle, ningún cambio de frontend puede llevar tests**, y hay que
-  verificar a mano (compilando con `npm run build` y probando en el navegador). Al crear el primer
-  test de verdad, hay que arreglar o borrar ese `app.spec.ts`.
+- **`npm test` ya funciona** (arreglado el 30/09/2026, tarea E1). Venía roto de la plantilla de
+  Angular: `src/app/app.spec.ts` importaba `./app` cuando el archivo real es `app.component.ts`, y
+  eso hacía fallar **todos** los tests antes de empezar. Ahora hay **20 tests en verde**
+  (`app.spec.ts` + `core/auth.service.spec.ts`). Reglas que se derivan de aquello:
+  - **Los `.spec.ts` van al lado del archivo** que prueban, con el mismo nombre
+    (`auth.service.ts` → `auth.service.spec.ts`). Hoy no hay carpeta de tests aparte ni archivo de
+    configuración propio: Vitest lo levanta el builder `@angular/build:unit-test` de `angular.json`.
+  - **`localStorage` funciona en los tests** (jsdom), pero **no se limpia solo entre tests**: hay que
+    vaciarlo en el `beforeEach`/`afterEach` si el test lo usa. Si no, un test deja tokens que
+    ensucian al siguiente.
+  - Los **tokens JWT de prueba se construyen en el propio test** (`btoa` de un JSON con `exp`), sin
+    depender de la fecha real ni de la red, y sin instalar ninguna librería de JWT.
+  - Para probar servicios que hablan con la API se usa `provideHttpClient()` +
+    `provideHttpClientTesting()` y `HttpTestingController` (ver `auth.service.spec.ts`).
+  - **Todo `it()` con un nombre que se entienda en español**, describiendo el comportamiento
+    ("rechaza un token caducado"), no el método ("test tokenCaducado 2").
 
 Reglas comunes:
 - Los tests son **deterministas**: sin depender de la fecha actual, la red, servicios externos ni
