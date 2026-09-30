@@ -434,6 +434,12 @@ Frontend (`retro-app`):
 - Los componentes se prueban con `TestBed`; nunca se llama a un servicio real (mock o
   `HttpTestingController`).
 - Comando: `npm test`.
+- **⚠️ Hoy `npm test` NO arranca** (comprobado el 30/09/2026): `src/app/app.spec.ts` es un resto de
+  la plantilla de Angular que importa `./app`, y el archivo real es `app.component.ts`, así que
+  falla con `TS2307: Cannot find module './app'`. Es la tarea **E1/F2** del plan. Consecuencia
+  práctica: **mientras eso no se arregle, ningún cambio de frontend puede llevar tests**, y hay que
+  verificar a mano (compilando con `npm run build` y probando en el navegador). Al crear el primer
+  test de verdad, hay que arreglar o borrar ese `app.spec.ts`.
 
 Reglas comunes:
 - Los tests son **deterministas**: sin depender de la fecha actual, la red, servicios externos ni
@@ -544,6 +550,21 @@ Reglas comunes:
   sanitizar y justificarlo.
 - Los tokens JWT viven en `localStorage` (estado actual) → todo dato pintado se trata como
   no confiable. Ver §11 para la alternativa con cookies `HttpOnly` (requiere cambio en backend).
+- **Manejo de la sesión (arreglado en E7, 30/09/2026)**. Dos reglas que ya están implementadas y no
+  deben romperse al tocar `core/`:
+  - **La caducidad se lee del propio token** (`exp`), no se supone. `tokenCaducado()`
+    (`core/auth.service.ts`) trata como caducado cualquier token ilegible o sin fecha: ante la duda,
+    se renueva. No se verifica la firma en el cliente **a propósito** (el cliente no es de fiar y
+    añadiría una librería).
+  - **El guard renueva, no expulsa**: si el token no sirve pero hay refresh, `authGuard` pide uno
+    nuevo y deja entrar; si no hay arreglo, manda al login. Al renovar hay que llamar a
+    `actualizarEstadoSesion()`, o la señal `isAuthenticated` se queda con el valor viejo.
+  - **Una sola renovación a la vez**: `AuthService.refreshToken()` comparte la petición
+    (`shareReplay`) y **todas** las peticiones que reciben 401 esperan a ella. Es obligatorio
+    mantenerlo así: el refresh está limitado a 10/min (§8.3) y varias renovaciones simultáneas
+    agotarían el límite y expulsarían al usuario sin motivo.
+  - Si la renovación falla: `logout()` **y** navegación a `/login`. Limpiar los tokens sin navegar
+    deja al usuario en una pantalla que falla sin explicación (era el comportamiento anterior).
 - No confiar en el cliente para permisos ni validaciones críticas.
 - Sin secretos, claves ni URLs privadas en el bundle (`environment.*` es público por definición).
 - Actualizar dependencias solo con justificación y verificando `npm audit` / `pip-audit`.
@@ -793,9 +814,14 @@ no una lista de cambios a ejecutar:
 12. DRF no tiene paginación configurada y el frontend pagina en cliente (carga la lista
     completa en memoria). Es aceptable con pocos cientos de registros; a partir de ahí hay que
     decidir paginación en servidor.
-13. El interceptor del frontend no deduplica refresh: varias respuestas 401 simultáneas lanzan
-    varios `refresh` y, si el refresh falla, reintenta sin límite.
-14. `authGuard` solo comprueba que exista un token en `localStorage`, no su expiración.
+13. ✅ **RESUELTO (tarea E7, 30/09/2026)**: el interceptor no deduplicaba el refresh: varias
+    respuestas 401 simultáneas lanzaban **una renovación por cada una**. Ahora todas comparten una
+    única petición (`shareReplay` en `AuthService.refreshToken()`), y si la renovación falla se
+    limpia la sesión **y se navega al login** (antes solo se borraban los tokens). Ver §8.2.
+14. ✅ **RESUELTO (tarea E7, 30/09/2026)**: `authGuard` solo comprobaba que existiera un token en
+    `localStorage`, así que un token caducado —o un texto inventado— contaba como sesión válida.
+    Ahora se lee la caducidad (`exp`) del propio token; si no sirve pero hay refresh, se **renueva y
+    se entra**; si no hay arreglo, al login. Ver §8.2.
 15. Guardar JWT en `localStorage` es sensible a XSS; la alternativa robusta (cookie `HttpOnly`)
     exige cambios coordinados en backend (CORS + CSRF) y debe planificarse como tarea propia.
 
